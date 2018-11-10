@@ -12,20 +12,17 @@ tags: CG
 当务之急是快速的糊出来框架然后把已经实现的效果迅速的做出来，其他的特效之后再去学，因为游戏的可扩展空间非常高。
 
 ## TODO
+
 - [x] Shader
-  
 - [x] Texture
     - [x] 2D texture loader
     - [x] Skybox loader
-
 - [ ] Camera
     - [x] Eular angle
     - [ ] Quaternion
-
 - [ ] Model
     - [x] Obj loader
     - [ ] Animation obj loader
-
 - [ ] Light
     - [x] Direct lighting
     - [x] Point lighting
@@ -36,33 +33,22 @@ tags: CG
     - [x] Gauss Blur
     - [ ] Motion Blur
     - [x] SSAO
-
 - [x] Anti-aliasing MSAA
-
 - [x] Shadow
     - [x] Shadow map
     - [x] PCF
-
 - [ ] Water Wave
     - [x] Gerstner
     - [ ] FFT
-
 - [ ] Object Picking
-
 - [x] Particle system
-
 - [ ] Font display
-
 - [ ] Simple physics system
     - [ ] Gravity
     - [x] Collide AABB
     - [ ] Speed
     - [ ] Acceleration
-
 - [ ] LOD - Level of Details
-
 - [ ] SSR - Screen Space Reflection
-
 - [ ] Infinite lawn
-
 - [ ] Interference - Bubble render
