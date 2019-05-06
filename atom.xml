@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>dydxh&#39;s blog</title>
+  
+  
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="http://yoursite.com/"/>
+  <updated>2019-05-06T17:10:10.269Z</updated>
+  <id>http://yoursite.com/</id>
+  
+  <author>
+    <name>dydxh</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>Travis-CI 自动化部署 Github Pages</title>
+    <link href="http://yoursite.com/2019/05/06/ghpages-with-travisci/"/>
+    <id>http://yoursite.com/2019/05/06/ghpages-with-travisci/</id>
+    <published>2019-05-06T16:27:32.000Z</published>
+    <updated>2019-05-06T17:10:10.269Z</updated>
+    
+    <content type="html"><![CDATA[<p>这个科技在第一次搭 <code>Github Pages</code> 的时候看见过，但是当时觉得太麻烦了，就没有管这个。已经半年没有写过博客，没想到新的一篇博客时在这样的情况下写出来的。</p><p>因为 <code>ZJU</code> 普通计科需要必修 “面向信息技术的沟通技巧”，第一节课需要每组抽一个产品下一次课前做一个推荐视频，当堂展示。我们组正好抽到了 <code>Travis-CI</code> 这个东西。抽过来一脸蒙蔽，组里没一个人用过。于是我接了做几个 <code>Travis-CI</code> 的例子用来展示的锅，趁着学这个东西，顺手把自己的博客和 <code>Travis-CI</code> 集成一下，本身也很方便。</p><a id="more"></a><p>主要参考了这个 <a href="https://zespia.tw/blog/2015/01/21/continuous-deployment-to-github-with-travis/" target="_blank" rel="noopener">blog</a> 里的内容。</p><h2 id="0x00"><a href="#0x00" class="headerlink" title="0x00"></a>0x00</h2><p>首先需要生成一对公密钥，<code>TravisCI</code> 和 <code>Github Pages</code> 对接的时候，显然不可能把自己的密钥直接 <code>push</code> 到 <code>repo</code> 里，然后在 <code>TravisCI</code> 的虚拟机里做 <code>deploy</code>，所以 <code>Github Pages</code> 的 <code>repo</code> 支持单独的添加一对专门用于 <code>deploy</code> 的公密钥。</p><p>生成公密钥，注意不要把自己原来的覆盖掉：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">"dydxh1998@gmail.com"</span></span><br></pre></td></tr></table></figure></p><p>然后把公钥贴到 <code>username.github.io</code> 这个 <code>repo</code> 的 <code>setting</code> 里 <code>Deploy Keys</code> 那一栏，注意要勾选写权限，<code>ReadOnly</code> 的话在 <code>TravisCI</code> 里 <code>hexo deploy</code> 的时候会报错。</p><h2 id="0x01"><a href="#0x01" class="headerlink" title="0x01"></a>0x01</h2><p>然后安装 <code>Travis-CI</code> 自己的命令行工具，主要是用于生成加密后的密钥，可以安全的传输到 <code>Travis-CI</code> 的虚拟机里。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">gem install travis</span><br><span class="line">travis login --auto</span><br><span class="line">travis encrypt-file ~/.ssh/deploy/id_rsa --add</span><br></pre></td></tr></table></figure><p>注意是把密钥喂进去，最后一步会生成 <code>id_rsa.enc</code> 是加密后的密钥，在这里 <code>Travis-CI</code> 先用登录你的帐号，然后给每个帐号生成一个用来加密的 <code>Key</code> 和 <code>IV</code>，这两个加密的东西都会在自动部署的时候，出现在 <code>Travis-CI</code> 的虚拟机的环境变量里，做到了很好的保密性。</p><p>然后最后一步还会在 <code>.travis.yml</code> 里加一句用来解密密钥的 <code>openssl</code> 命令，比较沙雕的是它给路径里多加了几个反斜杠 <code>\</code>, 不删掉的话，在 <code>Travis-CI</code> 执行这句的时候会报错找不到文件。</p><h2 id="0x02"><a href="#0x02" class="headerlink" title="0x02"></a>0x02</h2><p>然后需要准备用来 <code>deploy</code> 的 <code>ssh_config</code></p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Host github.com</span><br><span class="line">  User git</span><br><span class="line">  StrictHostKeyChecking no</span><br><span class="line">  IdentityFile ~/.ssh/id_rsa</span><br><span class="line">  IdentitiesOnly yes</span><br></pre></td></tr></table></figure><h2 id="0x03"><a href="#0x03" class="headerlink" title="0x03"></a>0x03</h2><p>再写一下 <code>.travis.yml</code></p><figure class="highlight yml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">language:</span> <span class="string">node_js</span></span><br><span class="line"><span class="attr">node_js:</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">'11'</span></span><br><span class="line"><span class="attr">before_install:</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">openssl</span> <span class="string">aes-256-cbc</span> <span class="bullet">-K</span> <span class="string">$encrypted_a8afbadcb2d6_key</span> <span class="bullet">-iv</span> <span class="string">$encrypted_a8afbadcb2d6_iv</span></span><br><span class="line"><span class="bullet">    -</span><span class="string">in</span> <span class="string">.travis/id_rsa.enc</span> <span class="bullet">-out</span> <span class="string">~/.ssh/id_rsa</span> <span class="bullet">-d</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">chmod</span> <span class="number">600</span> <span class="string">~/.ssh/id_rsa</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">eval</span> <span class="string">$(ssh-agent)</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">ssh-add</span> <span class="string">~/.ssh/id_rsa</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">cp</span> <span class="string">.travis/ssh_config</span> <span class="string">~/.ssh/config</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">git</span> <span class="string">config</span> <span class="bullet">--global</span> <span class="string">user.name</span> <span class="string">"dydxh"</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">git</span> <span class="string">config</span> <span class="bullet">--global</span> <span class="string">user.email</span> <span class="string">"dydxh1998@gmail.com"</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">npm</span> <span class="string">install</span> <span class="string">hexo</span> <span class="bullet">-g</span></span><br><span class="line"><span class="attr">script:</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">hexo</span> <span class="string">generate</span></span><br><span class="line"><span class="bullet">  -</span> <span class="string">hexo</span> <span class="string">deploy</span></span><br><span class="line"><span class="attr">branches:</span></span><br><span class="line"><span class="attr">  only:</span></span><br><span class="line"><span class="bullet">    -</span> <span class="string">source</span></span><br></pre></td></tr></table></figure><p>注意这里我把 <code>ssh_config</code> 和 <code>id_rsa.enc</code> 放到了 <code>.travis</code> 文件夹里，然后我的原稿在 <code>source</code> 分支里。</p><p>另外一点，<code>Travis-CI</code> 默认的 <code>NodeJS</code> 版本好像比较迷，写这个 <code>blog</code> 的时候是 <code>v0.10.48</code>，但是 <code>hexo</code> 比较新的版本已经不支持版本低于 <code>6</code> 的 <code>NodeJS</code> 了，我本机上是 <code>v11.14.0</code> 的，填上去能正常跑。</p><h2 id="0x04"><a href="#0x04" class="headerlink" title="0x04"></a>0x04</h2><p>第一次接触持续集成的东西，简单体验了一下，感觉很强大，打算这学期几个大程都着手用一下，做做测试什么的挺好的。</p>]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;这个科技在第一次搭 &lt;code&gt;Github Pages&lt;/code&gt; 的时候看见过，但是当时觉得太麻烦了，就没有管这个。已经半年没有写过博客，没想到新的一篇博客时在这样的情况下写出来的。&lt;/p&gt;
+&lt;p&gt;因为 &lt;code&gt;ZJU&lt;/code&gt; 普通计科需要必修 “面向信息技术的沟通技巧”，第一节课需要每组抽一个产品下一次课前做一个推荐视频，当堂展示。我们组正好抽到了 &lt;code&gt;Travis-CI&lt;/code&gt; 这个东西。抽过来一脸蒙蔽，组里没一个人用过。于是我接了做几个 &lt;code&gt;Travis-CI&lt;/code&gt; 的例子用来展示的锅，趁着学这个东西，顺手把自己的博客和 &lt;code&gt;Travis-CI&lt;/code&gt; 集成一下，本身也很方便。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="TravisCI" scheme="http://yoursite.com/tags/TravisCI/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>CG TODO</title>
+    <link href="http://yoursite.com/2018/11/10/cgtodo/"/>
+    <id>http://yoursite.com/2018/11/10/cgtodo/</id>
+    <published>2018-11-10T11:50:18.000Z</published>
+    <updated>2019-05-06T17:10:10.269Z</updated>
+    
+    <content type="html"><![CDATA[<p>马上就 CG proposal 了，大概列一下目前已经能做的和已知可以做的技术。两个月的时间肯定不可能全部做完，因为还没有开始糊框架，按照喜好自己挑着往上加吧。<br><a id="more"></a></p><p>参考资料目前也只看过<a href="https://developer.nvidia.com/gpugems" target="_blank" rel="noopener">《GPU Gems》</a>和 <a href="https://learnopengl-cn.github.io/" target="_blank" rel="noopener">LearnOpenGL</a> 还有一些零零碎碎的网站，以及 <a href="https://www.shadertoy.com/" target="_blank" rel="noopener">ShaderToy</a>。</p><p>当务之急是快速的糊出来框架然后把已经实现的效果迅速的做出来，其他的特效之后再去学，因为游戏的可扩展空间非常高。</p><h2 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h2><ul><li style="list-style: none"><input type="checkbox" checked> Shader</li><li style="list-style: none"><input type="checkbox" checked> Texture<ul><li style="list-style: none"><input type="checkbox" checked> 2D texture loader</li><li style="list-style: none"><input type="checkbox" checked> Skybox loader</li></ul></li><li style="list-style: none"><input type="checkbox"> Camera<ul><li style="list-style: none"><input type="checkbox" checked> Eular angle</li><li style="list-style: none"><input type="checkbox"> Quaternion</li></ul></li><li style="list-style: none"><input type="checkbox"> Model<ul><li style="list-style: none"><input type="checkbox" checked> Obj loader</li><li style="list-style: none"><input type="checkbox"> Animation obj loader</li></ul></li><li style="list-style: none"><input type="checkbox"> Light<ul><li style="list-style: none"><input type="checkbox" checked> Direct lighting</li><li style="list-style: none"><input type="checkbox" checked> Point lighting</li><li style="list-style: none"><input type="checkbox" checked> Gamma correction</li><li style="list-style: none"><input type="checkbox"> Light Volume</li><li style="list-style: none"><input type="checkbox" checked> HDR</li><li style="list-style: none"><input type="checkbox" checked> Bloom</li><li style="list-style: none"><input type="checkbox" checked> Gauss Blur</li><li style="list-style: none"><input type="checkbox"> Motion Blur</li><li style="list-style: none"><input type="checkbox" checked> SSAO</li></ul></li><li style="list-style: none"><input type="checkbox" checked> Anti-aliasing MSAA</li><li style="list-style: none"><input type="checkbox" checked> Shadow<ul><li style="list-style: none"><input type="checkbox" checked> Shadow map</li><li style="list-style: none"><input type="checkbox" checked> PCF</li></ul></li><li style="list-style: none"><input type="checkbox"> Water Wave<ul><li style="list-style: none"><input type="checkbox" checked> Gerstner</li><li style="list-style: none"><input type="checkbox"> FFT</li></ul></li><li style="list-style: none"><input type="checkbox"> Object Picking</li><li style="list-style: none"><input type="checkbox" checked> Particle system</li><li style="list-style: none"><input type="checkbox" checked> Font display</li><li style="list-style: none"><input type="checkbox" checked> Simple physics system<ul><li style="list-style: none"><input type="checkbox" checked> Gravity</li><li style="list-style: none"><input type="checkbox" checked> Collide AABB</li><li style="list-style: none"><input type="checkbox" checked> Speed</li><li style="list-style: none"><input type="checkbox" checked> Acceleration</li></ul></li><li style="list-style: none"><input type="checkbox"> LOD - Level of Details</li><li style="list-style: none"><input type="checkbox"> SSR - Screen Space Reflection</li><li style="list-style: none"><input type="checkbox" checked> Infinite world</li><li style="list-style: none"><input type="checkbox"> Interference - Bubble render</li></ul>]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;马上就 CG proposal 了，大概列一下目前已经能做的和已知可以做的技术。两个月的时间肯定不可能全部做完，因为还没有开始糊框架，按照喜好自己挑着往上加吧。&lt;br&gt;
+    
+    </summary>
+    
+    
+      <category term="CG" scheme="http://yoursite.com/tags/CG/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>2018-Nov</title>
+    <link href="http://yoursite.com/2018/11/10/2018-Nov/"/>
+    <id>http://yoursite.com/2018/11/10/2018-Nov/</id>
+    <published>2018-11-10T10:53:46.000Z</published>
+    <updated>2019-05-06T17:10:10.269Z</updated>
+    
+    <content type="html"><![CDATA[<p>难得的开始写 blog。<br><a id="more"></a></p><h2 id="0x01"><a href="#0x01" class="headerlink" title="0x01"></a>0x01</h2><p>马上期中考试了，算上小测大概有四门课有事情要做：</p><ul><li>数逻小测</li><li>职规展示</li><li>大雾期中考</li><li>DS 小测</li></ul><p>这个学期已经过去一半了但是感觉自己还什么都没有做，大概是每天都在沉迷于睡觉。大一一年回想起来也没什么值得提起的事情，代码没有写多少，绩点也低的可怜，大一一年对于大学的态度从错误逐渐纠正了过来，但重要的一年已经过去了，也没法挽回什么东西。</p><h2 id="0x02"><a href="#0x02" class="headerlink" title="0x02"></a>0x02</h2><p>之所以能想起来写 blog，是因为最近在规划图形学期末大程的事情，翻看了前辈们的 blog 和代码，所以就也想把这个过程记录下来，也算是给自己写代码的一个督促。</p><h2 id="0x03"><a href="#0x03" class="headerlink" title="0x03"></a>0x03</h2><p>大二这个学期硬核的课都堆在了周一，数逻、CG 和软保,当然也发现了一两个周一全天能见到的同学，虽然不太熟。数逻组了一个靠谱的队友，同时也是 CG 课友但不是队友， 每次实验都能保持当天做完，这个速度很健康。CG 应该是这学期投入时间最多的课程，软保就跟着小白的进度走就好。本来还从同学那里接了一个外包，但是因为数据迟迟不到和自己太拖延怕最后和期末最忙得时候撞在一起，就推掉了。</p><h2 id="0x04"><a href="#0x04" class="headerlink" title="0x04"></a>0x04</h2><p>图形学冬学期第一周要做 proposal，组内到现在线下碰了两次面，大概明确了要做个什么东西，但是细节上还没有讨论过。听说 proposal 大家都会说的很厉害，而最后做出来的东西都很惨淡，希望我们组能做出自己想要的结果吧。</p><p>说来可惜，第一次碰 OpenGL 是上学期 C 大程课上做第一个 Project，对着 <a href="https://learnopengl-cn.github.io/" target="_blank" rel="noopener">LearnOpenGL</a> 学完了第一章就简单地糊了个迷宫，从此再没碰过。本来计划下个学期选图形学，但是上学期末听学长说这学期可以很方便的补选上 CG，就去补选了。原本打算暑假把 <a href="https://learnopengl-cn.github.io/" target="_blank" rel="noopener">LearnOpenGL</a> 刷完，结果因为小学期时间不太巧，加上去了一趟 DEFCON 见识了一下 Vegas 的华丽，就只刷完了模型导入，开学以后倒是很快的刷完了 <a href="https://learnopengl-cn.github.io/" target="_blank" rel="noopener">LearnOpenGL</a>，但是刷完以后有一个月完全没有碰 OpenGL。 感觉还是时间规划上出现了严重的问题，拖验症一定要改了。</p><h2 id="0x05"><a href="#0x05" class="headerlink" title="0x05"></a>0x05</h2><p>关于 CG 最终的选题，问了一些学长，最终决定听学长的建议做一个 low-poly 的 Game 出来，后来和 DS 课上两个树莓的同学闲聊，意外获得了很多 low-poly 的参考，最终决定做 <a href="https://steamcommunity.com/app/368180" target="_blank" rel="noopener">PolyBall</a> 这个游戏，游戏本身很无聊，但是这个游戏的场景很丰富，也就可以很方便的往上面堆砌特效。</p><p>选择 <a href="https://steamcommunity.com/app/368180" target="_blank" rel="noopener">PolyBall</a> 的另一个重要原因是为了节省找 Model 的时间，先辈上学期做大程的时候，在 Model 上花费了很多时间，所以选游戏前我找来很多从游戏里扒素材的教程。从 Steam 上买了 PolyBall 给信仰充值以后，发现这个游戏是 Unity 做的，网上关于 Unity 素材提取的逆向工具也不少，最后用 <a href="https://www.perfare.net/1194.html" target="_blank" rel="noopener">AssetStudio</a> 成功的导出了 Model。工具作者看上去是个逆向大佬。</p><p>导出 Model 花了挺长时间的，因为 OpenGL 我只接触过 $obj$ + $mtl$ 的 Model，结果 Unity 里的模型一般都是 $fbx$ + $mat$ 的格式，坑了我三天才把 Model 正确的搞出来。期间还去 StackOverFlow 和 AssetStudio 作者的评论区都发了言。去 StackOverFlow 提问打 Tag 的时候，我打了 $OpenGL$, $Reverse Engineering$, $Unity$, $Graphics$ 四个标签，瞬间觉得十分交叉。</p><h2 id="0x06"><a href="#0x06" class="headerlink" title="0x06"></a>0x06</h2><p>下午看了几个学长的往年的 CG 框架，决定自己也快速糊一个轻量级的出来，希望不要被拖延症打败。</p><p>顺便还列了一下可以写的 Feature 列表，半个月前自己写了一下 Gerstner Wave 和粒子实现的火焰，感觉单独写个 Demo 的话倒是不难，集中精力写就完事了。</p><p>希望两个月以后的展示能展示出自己想要的结果。</p>]]></content>
+    
+    <summary type="html">
+    
+      &lt;p&gt;难得的开始写 blog。&lt;br&gt;
+    
+    </summary>
+    
+    
+      <category term="Miscellany" scheme="http://yoursite.com/tags/Miscellany/"/>
+    
+      <category term="CG" scheme="http://yoursite.com/tags/CG/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>终于开始写博客了</title>
+    <link href="http://yoursite.com/2018/05/11/startwrite/"/>
+    <id>http://yoursite.com/2018/05/11/startwrite/</id>
+    <published>2018-05-11T13:25:32.000Z</published>
+    <updated>2019-05-06T17:10:10.269Z</updated>
+    
+    <content type="html"><![CDATA[<h2 id="0x00"><a href="#0x00" class="headerlink" title="0x00"></a>0x00</h2><p>写博客的想法很早就有了，但是却一直没动手实现，去年12月第一次搭好了自己的 <a href="http://blog.dydxh.cn" target="_blank" rel="noopener">github page</a>，但是一直都没有开始写文章。</p><p>正好碰上最近什么都不想干，就想起来还有这么一件事情没有做完。于是就重新搭了一遍，换了 next 主题，把所有自己第一次想配置但是没实现的东西都配置好了。</p><a id="more"></a><h2 id="0x01"><a href="#0x01" class="headerlink" title="0x01"></a>0x01</h2><p>高中的时候在网易有一个博客，主要记录了自己 OI 的经历和写过的题目，当时有一段时间挺抵触写博客这件事情的，觉得有些浪费时间。但是后来慢慢才发现写博客挺重要的，一来是给自己记录一些东西，脑子不会记住所有东西，特别是写过得题目，学到的技巧；二来是给自己一个督促自己进步和分享的平台，技术上人们的交流大多通过网络，而博客大概是这种交流方式的主要媒介，自己的博客不断的更新自己才会有充实的感觉，因此也才能结识到更多的人。</p><h2 id="0x02"><a href="#0x02" class="headerlink" title="0x02"></a>0x02</h2><p>高中毕业以后，我算是换了一个前进的方向，放弃了算法竞赛，转行去参加 CTF，算是一种全新的经历，我之所以这样选择，是因为我发现高中时期只搞竞赛眼界太过狭隘，遇到算法还能凭着以前的知识和人理论一二，但是遇到算法以外的东西，就什么都不知道，所以我想找一个能学到很多东西、能开阔自己眼界的方向，坚持走下去。</p><h2 id="0x03"><a href="#0x03" class="headerlink" title="0x03"></a>0x03</h2><p>到了大学时间就慢慢的变快了，留给我挥霍的时间也不多了，所以要尽快在自己想走的路上成长起来，目前 CTF 因为投入的时间并不多，所以还没什么输出，之后要多挤出时间来学习 CTF。期待着能在未来的一天成为自己想成为的样子。</p><h2 id="0x04"><a href="#0x04" class="headerlink" title="0x04"></a>0x04</h2><p>这个博客大概会记录很多关于 CTF 的内容，伴随一些生活杂记，也可能会有算法题目，可能偶尔兴致来了会打一打 <a href="http://codeforces.com/" target="_blank" rel="noopener">Codeforces</a> , 希望大学剩下的3年零4个月能让自己成长起来，而这个博客，就作为见证成长的里程碑一样的东西吧。</p>]]></content>
+    
+    <summary type="html">
+    
+      &lt;h2 id=&quot;0x00&quot;&gt;&lt;a href=&quot;#0x00&quot; class=&quot;headerlink&quot; title=&quot;0x00&quot;&gt;&lt;/a&gt;0x00&lt;/h2&gt;&lt;p&gt;写博客的想法很早就有了，但是却一直没动手实现，去年12月第一次搭好了自己的 &lt;a href=&quot;http://blog.dydxh.cn&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;github page&lt;/a&gt;，但是一直都没有开始写文章。&lt;/p&gt;
+&lt;p&gt;正好碰上最近什么都不想干，就想起来还有这么一件事情没有做完。于是就重新搭了一遍，换了 next 主题，把所有自己第一次想配置但是没实现的东西都配置好了。&lt;/p&gt;
+    
+    </summary>
+    
+    
+      <category term="essay" scheme="http://yoursite.com/tags/essay/"/>
+    
+  </entry>
+  
+</feed>
