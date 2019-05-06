@@ -1,9 +1,7 @@
 language: node_js
-
 before_install:
-  - touch ~/.ssh/id_rsa.pub
   - openssl aes-256-cbc -K $encrypted_a8afbadcb2d6_key -iv $encrypted_a8afbadcb2d6_iv
-    -in .travis/id_rsa.pub.enc -out ~\/.ssh/id_rsa.pub -d
+    -in .travis/id_rsa.enc -out ~\/.ssh/id_rsa -d
   - chmod 600 ~/.ssh/id_rsa
   - eval $(ssh-agent)
   - ssh-add ~/.ssh/id_rsa
@@ -11,11 +9,9 @@ before_install:
   - git config --global user.name "dydxh"
   - git config --global user.email "dydxh1998@gmail.com"
   - npm install hexo -g
-
 script:
   - hexo generate
   - hexo deploy
-
 branches:
   only:
     - source
