@@ -42,13 +42,13 @@ tags: CG
     - [ ] FFT
 - [ ] Object Picking
 - [x] Particle system
-- [ ] Font display
-- [ ] Simple physics system
-    - [ ] Gravity
+- [x] Font display
+- [x] Simple physics system
+    - [x] Gravity
     - [x] Collide AABB
-    - [ ] Speed
-    - [ ] Acceleration
+    - [x] Speed
+    - [x] Acceleration
 - [ ] LOD - Level of Details
 - [ ] SSR - Screen Space Reflection
-- [ ] Infinite lawn
+- [x] Infinite world
 - [ ] Interference - Bubble render
